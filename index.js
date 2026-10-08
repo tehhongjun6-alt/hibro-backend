@@ -224,6 +224,20 @@ const pool = new Pool({
     rejectUnauthorized: false,
   },
 });
+// Return other users so the Friends page can display them
+app.get("/users", verifySupabaseSession, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, username FROM users WHERE id <> $1 ORDER BY username",
+      [req.user.userId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("GET /users failed:", error);
+    res.status(500).json({ error: "Unable to load users" });
+  }
+});
 
 // Show public posts to everyone and friends-only posts to their author and accepted friends
 app.get("/posts", optionalSupabaseSession, async (req, res) => {
