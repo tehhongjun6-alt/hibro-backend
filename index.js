@@ -238,7 +238,24 @@ app.get("/users", verifySupabaseSession, async (req, res) => {
     res.status(500).json({ error: "Unable to load users" });
   }
 });
+// Show pending friend requests received by the logged-in user
+app.get("/friend/requests", verifySupabaseSession, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT f.id, f.requester_id, u.username AS requester
+       FROM friendships AS f
+       JOIN users AS u ON u.id = f.requester_id
+       WHERE f.receiver_id = $1 AND f.status = 'pending'
+       ORDER BY f.id DESC`,
+      [req.user.userId]
+    );
 
+    res.json(result.rows);
+  } catch (error) {
+    console.error("GET /friend/requests failed:", error);
+    res.status(500).json({ error: "Unable to load friend requests" });
+  }
+});
 // Show public posts to everyone and friends-only posts to their author and accepted friends
 app.get("/posts", optionalSupabaseSession, async (req, res) => {
   const userId = req.user?.userId || null;
