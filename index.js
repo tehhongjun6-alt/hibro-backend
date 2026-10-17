@@ -298,13 +298,19 @@ app.get("/posts", optionalSupabaseSession, async (req, res) => {
 
 // Create a post for the user identified by the verified access token
 app.post("/posts", verifySupabaseSession, async (req, res) => {
-  const { content, visibility } = req.body;
+
+  const { content, visibility, image_url } = req.body;
+
+
   const authorId = req.user.userId;
 
-  // Require post content and one of the two supported visibility values
-  if (!content || !content.trim()) {
-    return res.status(400).json({ error: "Content is required" });
+
+  if (typeof content !== "string" || !content.trim()) {
+    return res.status(400).json({
+      error: "Content is required",
+    });
   }
+
 
   if (!["public", "friends-only"].includes(visibility)) {
     return res.status(400).json({
@@ -312,22 +318,34 @@ app.post("/posts", verifySupabaseSession, async (req, res) => {
     });
   }
 
+
+  if (
+    image_url !== undefined &&
+    image_url !== null &&
+    typeof image_url !== "string"
+  ) {
+    return res.status(400).json({
+      error: "Image URL must be a string",
+    });
+  }
+
   try {
-    // Save the post with the authenticated user as its author
+    //
     const result = await pool.query(
-      `INSERT INTO posts (content, author_id, visibility)
-       VALUES ($1, $2, $3)
+      `INSERT INTO posts (content, author_id, visibility, image_url)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [content.trim(), authorId, visibility]
+      [content.trim(), authorId, visibility, image_url || null]
     );
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Something went wrong" });
+    res.status(500).json({
+      error: "Something went wrong",
+    });
   }
 });
-
 
 // Return a simple response to confirm that the API server is running
 app.get("/", (req, res) => {
@@ -335,7 +353,6 @@ app.get("/", (req, res) => {
     message: "HiBro API is running",
   });
 });
-
 // Run a basic SQL query to confirm that the database connection works
 app.get("/db-check", async (req, res) => {
   try {
@@ -349,7 +366,6 @@ app.get("/db-check", async (req, res) => {
     });
   }
 });
-
 // Use the configured port locally and allow the hosting platform to provide another port
 const PORT = process.env.PORT || 3000;
 
